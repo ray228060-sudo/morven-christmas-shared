@@ -39,7 +39,7 @@
             z-index: 10; pointer-events: none;
             display: flex; flex-direction: column; 
             align-items: center;
-            padding-top: 40px;
+            padding: max(20px, env(safe-area-inset-top)) 16px 0;
             box-sizing: border-box;
             transition: opacity 0.5s ease;
         }
@@ -67,7 +67,7 @@
         /* Typography */
         h1 { 
             color: #fceea7; font-size: 8vw; 
-            max-size: 56px; margin: 0; font-weight: 400; 
+            margin: 0; font-weight: 400; 
             letter-spacing: 6px; 
             text-shadow: 0 0 50px rgba(252, 238, 167, 0.6); 
             background: linear-gradient(to bottom, #fff, #eebb66);
@@ -76,13 +76,21 @@
             opacity: 0.9; transition: opacity 0.5s ease;
             text-align: center; pointer-events: none;
         }
-        @media (min-width: 768px) { h1 { font-size: 56px; } }
+        #friendGreeting {
+            max-width: min(100%, 840px);
+            font-size: clamp(24px, 5.5vw, 53px);
+            line-height: 1.12;
+            letter-spacing: .045em;
+            text-align: center;
+            overflow-wrap: anywhere;
+            text-wrap: balance;
+        }
 
         /* Controls */
         .controls-wrapper {
-            position: absolute; top: 100px; right: 20px;        
+            margin-top: clamp(12px, 2.5vh, 22px);
             pointer-events: auto;
-            display: flex; flex-direction: column; align-items: flex-end;
+            display: flex; flex-direction: column; align-items: center;
             gap: 10px; z-index: 20;
             transition: opacity 0.5s ease;
         }
@@ -94,18 +102,18 @@
   - @Style: Luxury Dashboard UI (Hidden by default, toggle with 'S')
 --> */
         .btn-group {
-            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; align-items: center;
         }
 
         .control-btn {
             background: rgba(20, 20, 20, 0.6); 
             border: 1px solid rgba(212, 175, 55, 0.4); 
-            color: #d4af37; padding: 10px 20px; 
+            color: #f0d688; padding: 6px 12px; border-radius: 999px; 
             cursor: pointer; text-transform: uppercase; 
-            letter-spacing: 2px; font-size: 10px;
+            letter-spacing: .04em; font: 12px system-ui, sans-serif;
             transition: all 0.4s;
             display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px); min-width: 120px;
+            min-height: 36px; box-sizing: border-box;
         }
         
         .control-btn.active {
@@ -120,7 +128,7 @@
         .hint-text {
             color: rgba(212, 175, 55, 0.5); font-size: 9px;
             letter-spacing: 1px; text-transform: uppercase;
-            text-align: right; margin-top: 5px; max-width: 200px;
+            text-align: center; margin-top: 0; max-width: 240px;
         }
 
         input[type="file"] { display: none; }
@@ -293,7 +301,7 @@
         
         <div class="controls-wrapper">
             <div class="btn-group"><label class="control-btn">添加本地照片<input id="localPhotos" type="file" multiple accept="image/*" hidden></label>
-                <div class="control-btn" id="cam-btn">📷 Enable Gesture</div>
+                <button class="control-btn" id="cam-btn" type="button">开启手势</button>
             </div>
             <!-- 【修改】添加了 Press 'S' for Stats 的提示 -->
             <div class="hint-text">拖动旋转 · 点照片放大</div>
@@ -985,7 +993,7 @@
 
         async function initMediaPipe() {
             if (isCameraRunning) return;
-            camBtn.innerText = "Initializing...";
+            camBtn.innerText = "正在开启…";
             debugInfo.innerText = "Loading AI models...";
             video = document.getElementById('webcam');
             try {
@@ -1001,7 +1009,7 @@
                 video.addEventListener("loadeddata", predictWebcam);
                 document.getElementById('webcam-wrapper').style.opacity = 1;
                 debugInfo.innerText = "Gesture Active: Show Hand";
-                camBtn.innerText = "Gesture Active";
+                camBtn.innerText = "手势已开启";
                 camBtn.classList.add('active');
                 isCameraRunning = true;
             } catch(e) {
@@ -1010,7 +1018,7 @@
                 if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') msg = "Please allow camera access!";
                 else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') msg = "HTTPS required for camera!";
                 debugInfo.innerText = msg; showMsg(msg);
-                camBtn.innerText = "Retry Camera";
+                camBtn.innerText = "重试手势";
             }
         }
 // <!--
