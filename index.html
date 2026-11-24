@@ -1184,6 +1184,10 @@
 body.postcard-mode { touch-action: auto; user-select: auto; -webkit-user-select: auto; }
 #friendName { touch-action: manipulation; user-select: text; -webkit-user-select: text; }
 #gestureStatus { min-height: 1.4em; }
+#postcard form { position: relative; }
+#postcard h2 { overflow-wrap: anywhere; max-width: min(85%, 48rem); }
+#postcardSender { display: block; color: #ffe0a2; margin-top: .45em; font: italic .55em Georgia, serif; }
+#postcardSender[hidden] { display: none; }
 body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canvas-container,body.postcard-mode #stats-panel{display:none}
 #postcard{position:fixed;inset:0;z-index:80;background:radial-gradient(ellipse at 50% 58%,#283b1c,#101d10 72%,#060b07);color:#fff4de;text-align:center;display:grid;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center;overflow:hidden;padding:clamp(16px,4svh,36px) 12px max(14px,env(safe-area-inset-bottom));box-sizing:border-box}
 #postcard[hidden],#unlockedGallery[hidden]{display:none!important}
@@ -1196,7 +1200,7 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
 #morven3d{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:20px;color:#ffdf9c;font:italic 20px Georgia,serif;z-index:75;pointer-events:none}
 </style>
 <section id="postcard">
- <h2>欢迎 Morven 的朋友</h2>
+ <h2><span id="postcardGreeting">欢迎 Morven 的朋友</span><small id="postcardSender" hidden>From Morven</small></h2>
  <canvas id="evergreen" role="img" aria-label="挂着暖金灯、覆着白雪的层叠圣诞树"></canvas>
  <form id="friendForm"><label for="friendName">你的名字</label><div><input id="friendName" type="text" inputmode="text" enterkeyhint="go" autocomplete="given-name" maxlength="40" required placeholder="输入名字"><button type="submit">打开贺卡</button></div><small id="gestureStatus" role="status"></small></form>
 </section>
@@ -1267,16 +1271,20 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
    return;
   }
   if (button.disabled) return;
+  const greeting = 'Dear ' + name + ', Merry Christmas!';
+  field.blur();
+  document.querySelector('#postcardGreeting').textContent = greeting;
+  document.querySelector('#postcardSender').hidden = false;
   button.disabled = true;
   button.textContent = '正在打开…';
   status.textContent = '正在准备 3D 圣诞树，音乐可以继续播放。';
-  document.querySelector('#friendGreeting').textContent = 'Dear ' + name + ', Merry Christmas!';
+  document.querySelector('#friendGreeting').textContent = greeting;
 
   const script = document.createElement('script');
   script.type = 'module';
   script.textContent = document.querySelector('#gestureModule').textContent;
   const slowTimer = setTimeout(() => {
-   status.textContent = '3D 资源还在加载，可以先在贺卡上听歌。';
+   status.textContent = '祝福已送达。3D 还在加载，可以先看贺卡。';
   }, 8000);
 
   function cleanup() {
@@ -1285,12 +1293,14 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
    window.removeEventListener('tree-3d-failed', failed);
    script.removeEventListener('error', failed);
   }
-  function failed() {
+  function failed(event) {
    cleanup();
    script.remove();
    button.disabled = false;
    button.textContent = '重试打开';
-   status.textContent = '3D 暂时无法加载，点「重试打开」再试一次。';
+   status.textContent = event.type === 'error'
+    ? '祝福已送达。3D 文件加载失败，可以重试。'
+    : '祝福已送达。此浏览器暂时无法启动 3D，可以重试。';
   }
   function ready() {
    cleanup();
