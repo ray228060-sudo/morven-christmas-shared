@@ -133,24 +133,6 @@
 
         input[type="file"] { display: none; }
 
-        /* Mode Buttons (Bottom) */
-        #mode-bar {
-            position: absolute; bottom: 30px; left: 50%;
-            transform: translateX(-50%);
-            display: flex; gap: 15px;
-            z-index: 20; pointer-events: auto;
-        }
-        .mode-btn {
-            width: 50px; height: 50px; border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid #d4af37;
-            color: #d4af37; font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.3s;
-            backdrop-filter: blur(4px);
-        }
-        .mode-btn:active { transform: scale(0.9); background: #d4af37; color: #000; }
-        
         /* Webcam feedback */
         #webcam-wrapper {
             position: absolute; bottom: 100px; left: 20px;         
@@ -308,11 +290,6 @@
         </div>
 
         <!-- 触屏模式切换按钮 -->
-        <div id="mode-bar">
-            <div class="mode-btn" onclick="setMode('TREE')" title="Tree Mode">🎄</div>
-            <div class="mode-btn" onclick="setMode('SCATTER')" title="Scatter Mode">✨</div>
-            <div class="mode-btn" onclick="setMode('FOCUS_RANDOM')" title="Focus Mode">🔍</div>
-        </div>
 
         <!-- 【美化版统计仪表盘】 -->
         <!-- 【修改】添加了 class="ui-hidden" 默认隐藏 -->
@@ -764,7 +741,49 @@
             foliage = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:.96}));
             foliage.frustumCulled = false;
             mainGroup.add(foliage);
-            trunk = new THREE.Mesh(new THREE.CylinderGeometry(.36,.58,3.4,10),new THREE.MeshStandardMaterial({color:0x473224,roughness:1}));
+            const barkCanvas = document.createElement('canvas');
+            barkCanvas.width = 128;
+            barkCanvas.height = 256;
+            const bark = barkCanvas.getContext('2d');
+            bark.fillStyle = '#674834';
+            bark.fillRect(0, 0, 128, 256);
+            for (let i = 0; i < 110; i++) {
+                const x = Math.random() * 128;
+                const y = Math.random() * 280 - 24;
+                const length = 20 + Math.random() * 115;
+                const bend = (Math.random() - .5) * 10;
+                bark.strokeStyle = i % 3 === 0 ? '#b0845a' : '#35241b';
+                bark.globalAlpha = .18 + Math.random() * .4;
+                bark.lineWidth = .7 + Math.random() * 2.5;
+                bark.beginPath();
+                bark.moveTo(x, y);
+                bark.bezierCurveTo(x + bend, y + length * .3, x - bend, y + length * .7, x + bend, y + length);
+                bark.stroke();
+            }
+            const barkTexture = new THREE.CanvasTexture(barkCanvas);
+            barkTexture.colorSpace = THREE.SRGBColorSpace;
+
+            // Widen the lowest rings into irregular roots and curve the trunk into the branches.
+            const wood = new THREE.CylinderGeometry(1, 1, 3.65, 24, 18, true);
+            const verts = wood.attributes.position;
+            for (let i = 0; i < verts.count; i++) {
+                const x = verts.getX(i);
+                const z = verts.getZ(i);
+                const y = verts.getY(i);
+                const angle = Math.atan2(z, x);
+                const height = (y + 1.825) / 3.65;
+                const rootFlare = Math.pow(1 - height, 7);
+                const roots = Math.pow(.5 + .5 * Math.cos(5 * angle + .4), 3);
+                const radius = .54 - .24 * height
+                    + rootFlare * (.15 + .48 * roots)
+                    + .045 * Math.sin(7 * angle + 2 * height)
+                    + .028 * Math.sin(11 * angle - 3 * height);
+                verts.setXYZ(i, x * radius + .16 * Math.sin(height * Math.PI), y + .11 * rootFlare * (1 - roots), z * radius + .09 * height);
+            }
+            wood.computeVertexNormals();
+            trunk = new THREE.Mesh(wood, new THREE.MeshStandardMaterial({
+                map: barkTexture, bumpMap: barkTexture, bumpScale: .075, roughness: .98
+            }));
             trunk.position.y = -12.1;
             mainGroup.add(trunk);
         }
