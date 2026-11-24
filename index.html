@@ -1255,4 +1255,57 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
  });
 })();
 </script>
+<style>
+#musicToggle{position:fixed;z-index:81;right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));background:#182918;color:#fff0bf;border:1px solid #c6b75e;border-radius:999px;padding:8px 13px;font:14px system-ui;min-height:38px}
+</style>
+<audio id="holidayMusic" src="./holiday-music.mp3" preload="none" loop playsinline></audio>
+<button id="musicToggle" type="button" aria-pressed="false">播放音乐</button>
+<script>
+(() => {
+ const song=document.querySelector('#holidayMusic');
+ const toggle=document.querySelector('#musicToggle');
+ let context,gain,starting=false,hasStarted=false;
+ const volume=.32,fadeSeconds=3;
+ function setPlaying(playing){
+  toggle.textContent=playing?'暂停音乐':'播放音乐';
+  toggle.setAttribute('aria-pressed',String(playing));
+ }
+ async function playMusic(){
+  if(starting||!song.paused)return;
+  starting=true;
+  let resumed;
+  try{
+   if(!context){
+    const AudioEngine=window.AudioContext||window.webkitAudioContext;
+    if(AudioEngine){
+     context=new AudioEngine();
+     gain=context.createGain();
+     gain.gain.value=0;
+     context.createMediaElementSource(song).connect(gain).connect(context.destination);
+    }else song.volume=volume;
+   }
+   if(context?.state==='suspended')resumed=context.resume();
+   await Promise.all([song.play(),resumed]);
+   if(gain){
+    const now=context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(hasStarted?volume:0,now);
+    if(!hasStarted)gain.gain.linearRampToValueAtTime(volume,now+fadeSeconds);
+   }
+   hasStarted=true;setPlaying(true);
+  }catch(error){
+   song.pause();setPlaying(false);
+   if(error.name!=='NotAllowedError')toggle.title='音乐暂时无法播放';
+  }finally{starting=false}
+ }
+ toggle.addEventListener('click',()=>{
+  if(!song.paused){song.pause();setPlaying(false);}
+  else void playMusic();
+ });
+ document.querySelector('#friendForm').addEventListener('submit',()=>{
+  if(!hasStarted)void playMusic();
+ });
+ void playMusic();
+})();
+</script>
 </body></html>
