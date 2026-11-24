@@ -1256,56 +1256,87 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
 })();
 </script>
 <style>
-#musicToggle{position:fixed;z-index:81;right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));background:#182918;color:#fff0bf;border:1px solid #c6b75e;border-radius:999px;padding:8px 13px;font:14px system-ui;min-height:38px}
+#musicToggle {
+ position: fixed; z-index: 81; top: max(12px, env(safe-area-inset-top));
+ right: max(12px, env(safe-area-inset-right)); width: 44px; height: 44px;
+ display: grid; place-items: center; padding: 0; border-radius: 50%;
+ border: 1px solid #c6b75e; background: #182918; color: #fff0bf;
+ font: 23px/1 system-ui; cursor: pointer;
+}
+#musicToggle[aria-pressed="true"] span { animation: music-spin 3s linear infinite; }
+@keyframes music-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+ #musicToggle[aria-pressed="true"] span { animation: none; }
+}
 </style>
-<audio id="holidayMusic" src="./holiday-music.mp3" preload="none" loop playsinline></audio>
-<button id="musicToggle" type="button" aria-pressed="false">播放音乐</button>
+<audio id="holidayMusic" src="./holiday-music.mp3" preload="metadata" loop playsinline></audio>
+<button id="musicToggle" type="button" aria-label="播放音乐" aria-pressed="false"><span aria-hidden="true">♫</span></button>
 <script>
 (() => {
- const song=document.querySelector('#holidayMusic');
- const toggle=document.querySelector('#musicToggle');
- let context,gain,starting=false,hasStarted=false;
- const volume=.32,fadeSeconds=3;
- function setPlaying(playing){
-  toggle.textContent=playing?'暂停音乐':'播放音乐';
-  toggle.setAttribute('aria-pressed',String(playing));
+ const song = document.querySelector('#holidayMusic');
+ const toggle = document.querySelector('#musicToggle');
+ const startTime = 38;
+ const volume = 0.32;
+ const fadeSeconds = 3;
+ let context, gain, hasPlayed = false, manuallyPaused = false;
+
+ song.currentTime = startTime;
+ song.volume = volume;
+
+ function prepareAudio() {
+  if (context) return;
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  if (!AudioEngine) return;
+  context = new AudioEngine();
+  gain = context.createGain();
+  gain.gain.value = 0;
+  context.createMediaElementSource(song).connect(gain).connect(context.destination);
+  song.volume = 1;
  }
- async function playMusic(){
-  if(starting||!song.paused)return;
-  starting=true;
-  let resumed;
-  try{
-   if(!context){
-    const AudioEngine=window.AudioContext||window.webkitAudioContext;
-    if(AudioEngine){
-     context=new AudioEngine();
-     gain=context.createGain();
-     gain.gain.value=0;
-     context.createMediaElementSource(song).connect(gain).connect(context.destination);
-    }else song.volume=volume;
-   }
-   if(context?.state==='suspended')resumed=context.resume();
-   await Promise.all([song.play(),resumed]);
-   if(gain){
-    const now=context.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(hasStarted?volume:0,now);
-    if(!hasStarted)gain.gain.linearRampToValueAtTime(volume,now+fadeSeconds);
-   }
-   hasStarted=true;setPlaying(true);
-  }catch(error){
-   song.pause();setPlaying(false);
-   if(error.name!=='NotAllowedError')toggle.title='音乐暂时无法播放';
-  }finally{starting=false}
+
+ function playMusic() {
+  try {
+   prepareAudio();
+   if (context?.state === 'suspended') void context.resume().catch(() => {});
+  } catch (error) {
+   console.warn('Music fade unavailable', error);
+  }
+  void song.play().catch(() => {});
  }
- toggle.addEventListener('click',()=>{
-  if(!song.paused){song.pause();setPlaying(false);}
-  else void playMusic();
+
+ function setPlaying(playing) {
+  toggle.setAttribute('aria-pressed', String(playing));
+  toggle.setAttribute('aria-label', playing ? '暂停音乐' : '播放音乐');
+ }
+
+ song.addEventListener('playing', () => {
+  if (song.seeking) return;
+  if (gain && !hasPlayed) {
+   const now = context.currentTime;
+   gain.gain.setValueAtTime(0, now);
+   gain.gain.linearRampToValueAtTime(volume, now + fadeSeconds);
+  }
+  hasPlayed = true;
+  setPlaying(true);
  });
- document.querySelector('#friendForm').addEventListener('submit',()=>{
-  if(!hasStarted)void playMusic();
+ song.addEventListener('pause', () => setPlaying(false));
+ song.addEventListener('waiting', () => setPlaying(false));
+ song.addEventListener('error', () => setPlaying(false));
+
+ toggle.addEventListener('click', () => {
+  manuallyPaused = !song.paused;
+  if (manuallyPaused) song.pause();
+  else playMusic();
  });
- void playMusic();
+
+ function playOnFirstInteraction(event) {
+  if (!event.isTrusted || toggle.contains(event.target)) return;
+  if (event.type === 'keydown' && (event.key === 'Tab' || event.isComposing)) return;
+  if (!hasPlayed && !manuallyPaused) playMusic();
+ }
+ document.addEventListener('click', playOnFirstInteraction, true);
+ document.addEventListener('keydown', playOnFirstInteraction, true);
+ playMusic();
 })();
 </script>
 </body></html>
