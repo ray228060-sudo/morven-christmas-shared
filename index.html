@@ -1181,6 +1181,9 @@
     </script>
 
 <style>
+body.postcard-mode { touch-action: auto; user-select: auto; -webkit-user-select: auto; }
+#friendName { touch-action: manipulation; user-select: text; -webkit-user-select: text; }
+#gestureStatus { min-height: 1.4em; }
 body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canvas-container,body.postcard-mode #stats-panel{display:none}
 #postcard{position:fixed;inset:0;z-index:80;background:radial-gradient(ellipse at 50% 58%,#283b1c,#101d10 72%,#060b07);color:#fff4de;text-align:center;display:grid;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center;overflow:hidden;padding:clamp(16px,4svh,36px) 12px max(14px,env(safe-area-inset-bottom));box-sizing:border-box}
 #postcard[hidden],#unlockedGallery[hidden]{display:none!important}
@@ -1195,7 +1198,7 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
 <section id="postcard">
  <h2>欢迎 Morven 的朋友</h2>
  <canvas id="evergreen" role="img" aria-label="挂着暖金灯、覆着白雪的层叠圣诞树"></canvas>
- <form id="friendForm"><label for="friendName">你的名字</label><div><input id="friendName" autocomplete="given-name" maxlength="40" required placeholder="输入名字"><button type="submit">打开贺卡</button></div><small id="gestureStatus" role="status"></small></form>
+ <form id="friendForm"><label for="friendName">你的名字</label><div><input id="friendName" type="text" inputmode="text" enterkeyhint="go" autocomplete="given-name" maxlength="40" required placeholder="输入名字"><button type="submit">打开贺卡</button></div><small id="gestureStatus" role="status"></small></form>
 </section>
 <div id="morven3d" hidden>From Morven</div>
 <script>
@@ -1250,28 +1253,60 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
   for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?7:16;const px=Math.cos(a)*r,py=-380+Math.sin(a)*r;i?cx.lineTo(px,py):cx.moveTo(px,py)}
   cx.closePath();cx.shadowBlur=16;cx.shadowColor='#face6a';cx.fillStyle='#ffe098';cx.fill();cx.restore();
  }
- draw();if(window.ResizeObserver)new ResizeObserver(draw).observe(canvas);else window.addEventListener('resize',draw);
- const form=document.querySelector('#friendForm');
- form.addEventListener('submit',event=>{
+
+ const form = document.querySelector('#friendForm');
+ const field = document.querySelector('#friendName');
+ const button = form.querySelector('button');
+ const status = document.querySelector('#gestureStatus');
+ form.addEventListener('submit', event => {
   event.preventDefault();
-  const name=document.querySelector('#friendName').value.trim();
-  if(!name)return;
-  form.querySelector('button').disabled=true;
-  document.querySelector('#friendGreeting').textContent='Dear '+name+', Merry Christmas!';
-  const status=document.querySelector('#gestureStatus');
-  status.textContent='正在点亮圣诞树…';
-  const script=document.createElement('script');
-  script.type='module';script.textContent=document.querySelector('#gestureModule').textContent;
-  const fallback=setTimeout(()=>{status.textContent='3D 加载较慢，请稍等。';},12000);
-  window.addEventListener('tree-3d-failed',()=>{
-   clearTimeout(fallback);status.textContent='3D 暂时无法加载，可以刷新后重试。';
-  },{once:true});
-  window.addEventListener('tree-3d-ready',()=>{
-   clearTimeout(fallback);document.body.classList.remove('postcard-mode');
-   document.querySelector('#postcard').hidden=true;document.querySelector('#morven3d').hidden=false;
-  },{once:true});
-  document.body.append(script);
+  const name = field.value.trim();
+  if (!name) {
+   status.textContent = '请输入名字。';
+   field.focus();
+   return;
+  }
+  if (button.disabled) return;
+  button.disabled = true;
+  button.textContent = '正在打开…';
+  status.textContent = '正在准备 3D 圣诞树，音乐可以继续播放。';
+  document.querySelector('#friendGreeting').textContent = 'Dear ' + name + ', Merry Christmas!';
+
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.textContent = document.querySelector('#gestureModule').textContent;
+  const slowTimer = setTimeout(() => {
+   status.textContent = '3D 资源还在加载，可以先在贺卡上听歌。';
+  }, 8000);
+
+  function cleanup() {
+   clearTimeout(slowTimer);
+   window.removeEventListener('tree-3d-ready', ready);
+   window.removeEventListener('tree-3d-failed', failed);
+   script.removeEventListener('error', failed);
+  }
+  function failed() {
+   cleanup();
+   script.remove();
+   button.disabled = false;
+   button.textContent = '重试打开';
+   status.textContent = '3D 暂时无法加载，点「重试打开」再试一次。';
+  }
+  function ready() {
+   cleanup();
+   document.body.classList.remove('postcard-mode');
+   document.querySelector('#postcard').hidden = true;
+   document.querySelector('#morven3d').hidden = false;
+  }
+  window.addEventListener('tree-3d-ready', ready);
+  window.addEventListener('tree-3d-failed', failed);
+  script.addEventListener('error', failed);
+  // Give the button and status a frame to update before starting the 3D engine.
+  requestAnimationFrame(() => requestAnimationFrame(() => document.body.append(script)));
  });
+ requestAnimationFrame(draw);
+ if (window.ResizeObserver) new ResizeObserver(draw).observe(canvas);
+ else window.addEventListener('resize', draw);
 })();
 </script>
 <style>
