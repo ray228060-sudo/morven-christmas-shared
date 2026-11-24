@@ -1263,6 +1263,10 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
  border: 1px solid #c6b75e; background: #182918; color: #fff0bf;
  font: 23px/1 system-ui; cursor: pointer;
 }
+body:not(.postcard-mode) #musicToggle {
+ top: auto;
+ bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px));
+}
 #musicToggle[aria-pressed="true"] span { animation: music-spin 3s linear infinite; }
 @keyframes music-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
@@ -1334,6 +1338,7 @@ body.postcard-mode #loader,body.postcard-mode #ui-layer,body.postcard-mode #canv
   if (event.type === 'keydown' && (event.key === 'Tab' || event.isComposing)) return;
   if (!hasPlayed && !manuallyPaused) playMusic();
  }
+ document.addEventListener('pointerup', playOnFirstInteraction, true);
  document.addEventListener('click', playOnFirstInteraction, true);
  document.addEventListener('keydown', playOnFirstInteraction, true);
  playMusic();
